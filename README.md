@@ -11,8 +11,9 @@ It provides:
 * wildcard TLS certificates using Cloudflare DNS-01 challenge;
 * a single public entry point for multiple isolated Docker Compose stacks.
 
-The gateway acts as shared infrastructure. Applications such as `gitea-dockerized`,
-`meshctl`, and other services consume it without being tightly coupled to its deployment.
+The gateway acts as shared infrastructure. Applications such as
+`gitea-dockerized`, `meshctl`, and other services consume it without being
+tightly coupled to its deployment.
 
 ---
 
@@ -20,11 +21,13 @@ The gateway acts as shared infrastructure. Applications such as `gitea-dockerize
 
 * **Single ingress point**
 
-  Exposes only ports `80` and `443` on the host while routing traffic to any number of services.
+  Only ports `80` and `443` are exposed on the host.
+  All public services are routed through a single Caddy instance.
 
-* **Zero-config service discovery**
+* **Docker label-based discovery**
 
-  New services can be published by adding Docker labels. No manual Caddyfile editing is required.
+  New services can be published by adding Docker labels. 
+  No manual Caddyfile editing is required.
 
 * **Wildcard TLS**
 
@@ -34,12 +37,21 @@ The gateway acts as shared infrastructure. Applications such as `gitea-dockerize
   *.example.com
   ```
 
-  covers all service subdomains. Adding new services does not require additional ACME requests.
+  covers all service subdomains.
 
 * **Project independence**
 
   Each application remains fully standalone and can still be deployed with its own internal Caddy instance.
   When running inside this infrastructure, the built-in proxy can simply be disabled.
+
+---
+
+## Requirements
+
+* Docker Engine
+* Docker Compose v2
+* A domain managed by Cloudflare
+* A Cloudflare API token with DNS edit permissions
 
 ---
 
@@ -107,6 +119,15 @@ ACME_EMAIL=
 BASE_DOMAIN=
 ```
 
+Optional IPv6 support:
+
+```env
+ENABLE_IPV6=false
+```
+
+Set to `true` if Caddy should see real client IP addresses for IPv6 visitors
+instead of Docker's gateway address.
+
 Start the gateway:
 
 ```bash
@@ -129,7 +150,7 @@ The first startup performs:
 
 ### Verify Installation
 
-Run:
+Check that the gateway responds:
 
 ```bash
 curl -Iv https://example.com
@@ -139,6 +160,12 @@ Expected output:
 
 * successful TLS verification;
 * certificate issued by Let's Encrypt.
+
+To verify generated routes:
+
+```bash
+docker exec caddy-proxy cat /config/caddy/Caddyfile.autosave
+```
 
 ---
 
@@ -162,12 +189,22 @@ Include → example.com
 
 ---
 
-### IPv6 and real client IPs
+## IPv6 Support
 
-By default the network is plain IPv4 — Caddy sees IPv6 visitors through Docker's
-gateway address instead of their real IP. If that matters to you, set
-`ENABLE_IPV6=true` in `.env` and run `docker compose up -d` again; Compose
-recreates the network with IPv6 enabled, no manual `docker network create` needed.
+IPv6 support is disabled by default.
+
+When enabled:
+
+```env
+ENABLE_IPV6=true
+```
+
+Docker Compose recreates the external network with IPv6 enabled.
+
+No manual network creation is required.
+
+This allows Caddy to receive real IPv6 client addresses instead of Docker's
+gateway address.
 
 ---
 
@@ -271,7 +308,7 @@ All services that should be proxied must appear in the network members list.
 
 # Technology Stack
 
-* [Caddy 2.9](https://caddyserver.com/)
+* [Caddy 2.11](https://caddyserver.com/)
 * [caddy-docker-proxy](https://github.com/lucaslorentz/caddy-docker-proxy)
   Docker labels → automatic Caddy configuration
 * [caddy-dns/cloudflare](https://github.com/caddy-dns/caddy-dns)

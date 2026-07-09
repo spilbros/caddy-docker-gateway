@@ -27,6 +27,7 @@ services:
 networks:
   caddy_proxy_net:
     name: caddy_proxy_net
+    enable_ipv6: ${ENABLE_IPV6:-false}
 
 volumes:
   caddy_data:

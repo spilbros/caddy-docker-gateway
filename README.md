@@ -43,7 +43,7 @@ The gateway acts as shared infrastructure. Applications such as `gitea-dockerize
 
 ---
 
-# Architecture
+### Architecture
 
 ```
                          Internet
@@ -83,7 +83,7 @@ or directory manages the service.
 
 ---
 
-# Deployment
+### Deployment
 
 Clone the repository:
 
@@ -107,12 +107,6 @@ ACME_EMAIL=
 BASE_DOMAIN=
 ```
 
-Create the shared Docker network:
-
-```bash
-docker network create caddy_proxy_net --ipv6
-```
-
 Start the gateway:
 
 ```bash
@@ -133,7 +127,7 @@ The first startup performs:
 
 ---
 
-# Verify Installation
+### Verify Installation
 
 Run:
 
@@ -148,7 +142,7 @@ Expected output:
 
 ---
 
-# Cloudflare API Token
+### Cloudflare API Token
 
 Use a **Scoped API Token** instead of a Global API Key.
 
@@ -168,36 +162,16 @@ Include → example.com
 
 ---
 
-# IPv6 and Client IP Preservation
+### IPv6 and real client IPs
 
-Creating the Docker network manually:
-
-```bash
-docker network create caddy_proxy_net --ipv6
-```
-
-allows Caddy to preserve real IPv6 client addresses instead of seeing only the Docker gateway address.
-
-When the network is created implicitly through Compose:
-
-```yaml
-networks:
-  caddy_proxy_net:
-```
-
-this behavior is not guaranteed.
-
-For predictable behavior, create the network manually and reference it as an external network:
-
-```yaml
-networks:
-  caddy_proxy_net:
-    external: true
-```
+By default the network is plain IPv4 — Caddy sees IPv6 visitors through Docker's
+gateway address instead of their real IP. If that matters to you, set
+`ENABLE_IPV6=true` in `.env` and run `docker compose up -d` again; Compose
+recreates the network with IPv6 enabled, no manual `docker network create` needed.
 
 ---
 
-# Adding a New Service
+### Adding a New Service
 
 No changes are required in `caddy-docker-gateway`.
 
@@ -237,7 +211,7 @@ The existing wildcard certificate already covers the new hostname.
 
 ---
 
-# Integrating Existing Projects
+### Integrating Existing Projects
 
 Projects with their own Caddy instance can remain completely standalone.
 

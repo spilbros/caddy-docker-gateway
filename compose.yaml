@@ -3,6 +3,9 @@ services:
     build: .
     image: caddy-proxy-cloudflare:latest
     container_name: caddy-proxy
+    command:
+      - caddy
+      - docker-proxy
     restart: unless-stopped
     ports:
       - "80:80"

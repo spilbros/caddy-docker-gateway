@@ -104,6 +104,7 @@ Required variables:
 ```env
 CLOUDFLARE_API_TOKEN=
 ACME_EMAIL=
+BASE_DOMAIN=
 ```
 
 Create the shared Docker network:

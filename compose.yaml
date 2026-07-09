@@ -1,0 +1,33 @@
+services:
+  caddy:
+    build: .
+    image: caddy-proxy-cloudflare:latest
+    container_name: caddy-proxy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    environment:
+      - CADDY_INGRESS_NETWORKS=caddy_proxy_net
+      - CLOUDFLARE_API_TOKEN=${CLOUDFLARE_API_TOKEN}
+    networks:
+      - caddy_proxy_net
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    labels:
+      caddy.email: ${ACME_EMAIL}
+      # Wildcard certificate for the base domain via DNS-01.
+      # New subdomains are covered automatically, no new ACME request needed.
+      caddy_0: "*.${BASE_DOMAIN}, ${BASE_DOMAIN}"
+      caddy_0.tls.dns: "cloudflare {env.CLOUDFLARE_API_TOKEN}"
+
+networks:
+  caddy_proxy_net:
+    name: caddy_proxy_net
+
+volumes:
+  caddy_data:
+  caddy_config:

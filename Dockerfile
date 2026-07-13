@@ -13,4 +13,10 @@ RUN xcaddy build \
 
 FROM caddy:2.11.4-alpine@sha256:5f5c8640aae01df9654968d946d8f1a56c497f1dd5c5cda4cf95ab7c14d58648
 
+# The base image is pinned by digest for reproducibility, but that freezes
+# whatever Alpine packages were current when upstream built it. Pulling
+# fresh packages here keeps OS-level CVEs (e.g. c-ares, busybox) patched on
+# every build instead of waiting on upstream to re-cut the base image.
+RUN apk --no-cache upgrade
+
 COPY --from=builder /usr/bin/caddy /usr/bin/caddy

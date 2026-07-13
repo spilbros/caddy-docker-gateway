@@ -14,9 +14,8 @@ It provides:
 * wildcard TLS certificates using Cloudflare DNS-01 challenge;
 * a single public entry point for multiple isolated Docker Compose stacks.
 
-The gateway acts as shared infrastructure. Applications such as
-`gitea-dockerized`, `meshctl`, and other services consume it without being
-tightly coupled to its deployment.
+The gateway acts as shared infrastructure. Applications consume it without
+being tightly coupled to its deployment.
 
 ---
 
@@ -56,6 +55,28 @@ tightly coupled to its deployment.
 
 ---
 
+## Why not Traefik or nginx-proxy?
+
+Both are solid tools; this project simply targets a different point in the
+design space:
+
+* **Traefik** covers the same ground (label discovery, DNS-01 wildcard
+  certificates), but brings a much larger configuration surface — entrypoints,
+  routers, middlewares, providers. That flexibility earns its keep in larger
+  setups; on a single host it is mostly surface area to configure and audit.
+* **nginx-proxy + acme-companion** can do DNS-01 through acme.sh, but wildcard
+  certificates are a manually wired special case rather than the default path,
+  and nginx template customization gets involved quickly.
+* **Caddy** ships automatic HTTPS, HTTP/3 and sane TLS defaults in a single
+  binary; `caddy-docker-proxy` adds label-based discovery on top. The whole
+  gateway stays small enough to audit in one sitting.
+
+The trade-off is a custom-built image (via xcaddy) instead of a stock one.
+The added supply-chain risk is contained by version pinning, CI, and
+Renovate — see [Security](#security).
+
+---
+
 ## Requirements
 
 * Docker Engine
@@ -86,7 +107,7 @@ tightly coupled to its deployment.
         ┌───────────────────┼───────────────────┐
         │                   │                   │
  ┌──────▼──────┐     ┌──────▼──────┐     ┌──────▼──────┐
- │   Gitea     │     │  Headscale  │     │    3x-ui    │
+ │    App A    │     │    App B    │     │    App C    │
  │             │     │             │     │             │
  │ application │     │ application │     │ application │
  └─────────────┘     └─────────────┘     └─────────────┘
@@ -151,7 +172,7 @@ Design decisions and their rationale:
 Clone the repository:
 
 ```bash
-git clone <repository-url> ~/caddy-docker-gateway
+git clone https://github.com/spilbros/caddy-docker-gateway.git ~/caddy-docker-gateway
 cd ~/caddy-docker-gateway
 ```
 
@@ -396,13 +417,6 @@ Expected output: `OK`.
   least-privilege gateway to the Docker API
 * [xcaddy](https://github.com/caddyserver/xcaddy)
   Custom Caddy binary builder
-
----
-
-## Related Projects
-
-* `gitea-dockerized` — self-hosted Gitea deployment
-* `meshctl` — Headscale deployment with CLI tooling and ACL management
 
 ---
 

@@ -1,4 +1,30 @@
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
 services:
+  docker-socket-proxy:
+    image: tecnativa/docker-socket-proxy:0.3.0@sha256:9e4b9e7517a6b660f2cc903a19b257b1852d5b3344794e3ea334ff00ae677ac2
+    container_name: docker-socket-proxy
+    restart: unless-stopped
+    environment:
+      # caddy-docker-proxy only needs read access to container/network
+      # metadata and the event stream. Everything else stays blocked,
+      # including all mutating requests (POST=0).
+      - CONTAINERS=1
+      - NETWORKS=1
+      - INFO=1
+      - POST=0
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - docker_socket_net
+    security_opt:
+      - no-new-privileges:true
+    logging: *default-logging
+
   caddy:
     build: .
     image: caddy-proxy-cloudflare:latest
@@ -7,19 +33,32 @@ services:
       - caddy
       - docker-proxy
     restart: unless-stopped
+    depends_on:
+      - docker-socket-proxy
     ports:
       - "80:80"
       - "443:443"
       - "443:443/udp"
     environment:
       - CADDY_INGRESS_NETWORKS=caddy_proxy_net
+      # Docker API is reached through the socket proxy, never directly.
+      - DOCKER_HOST=tcp://docker-socket-proxy:2375
       - CLOUDFLARE_API_TOKEN=${CLOUDFLARE_API_TOKEN}
     networks:
       - caddy_proxy_net
+      - docker_socket_net
     volumes:
-      - /var/run/docker.sock:/var/run/docker.sock:ro
       - caddy_data:/data
       - caddy_config:/config
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:2019/config/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    logging: *default-logging
     labels:
       caddy.email: ${ACME_EMAIL}
       # Wildcard certificate for the base domain via DNS-01.
@@ -31,6 +70,10 @@ networks:
   caddy_proxy_net:
     name: caddy_proxy_net
     enable_ipv6: ${ENABLE_IPV6:-false}
+  # Internal-only network between Caddy and the socket proxy:
+  # no gateway, no outbound access, not reachable from other stacks.
+  docker_socket_net:
+    internal: true
 
 volumes:
   caddy_data:

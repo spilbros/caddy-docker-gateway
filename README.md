@@ -157,6 +157,29 @@ Design decisions and their rationale:
 * **Container hardening.**
   `no-new-privileges` on both containers, log rotation capped at 3×10 MB.
 
+* **Origin exposure vs. Cloudflare (if you put any host behind Cloudflare).**
+  This gateway is a *direct* public entry point: ports 80/443 answer for every
+  configured vhost from any source IP. If you also proxy some hostnames through
+  Cloudflare (orange cloud) expecting its WAF / rate limiting / bot protection,
+  be aware that the origin IP is usually discoverable (passive DNS, or any
+  hostname you keep `DNS only` — e.g. a Headscale/Tailscale control server, which
+  Cloudflare cannot proxy). An attacker who learns the IP can request the
+  proxied vhosts straight from the origin and skip Cloudflare entirely.
+
+  If anything here relies on Cloudflare for protection, lock the origin down:
+
+  * firewall 80/443 to the [Cloudflare IP ranges](https://www.cloudflare.com/ips/)
+    only — a helper is provided:
+    [`scripts/cloudflare-origin-lock.sh`](scripts/cloudflare-origin-lock.sh);
+  * or enable [Authenticated Origin Pulls](https://developers.cloudflare.com/ssl/origin-configuration/authenticated-origin-pull/)
+    (mTLS) and require the Cloudflare client cert in Caddy;
+  * or front the web apps with a `cloudflared` tunnel so no inbound 80/443 is
+    published at all.
+
+  Services that *must* be reached directly (Headscale control/DERP) cannot sit
+  behind Cloudflare — keep them patched and rate-limited at the Caddy layer, and
+  do not rely on Cloudflare for them.
+
 **Accepted trade-offs** (reasonable for single-host, self-hosted scale):
 
 * `CLOUDFLARE_API_TOKEN` is passed as an environment variable and is visible
